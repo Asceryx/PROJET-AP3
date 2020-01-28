@@ -247,11 +247,10 @@ let arb_img_test1 = Noeud(Feuille(Noir),Feuille(Blanc),Feuille(Noir),Feuille(Noi
 
 let random_img(t,n : int * int) :  picture =
   let img = Array.make_matrix t t Blanc in
-  forloop((t,img), n, (function(t,img) -> let i = Random.int(t) in
+  snd(forloop((t,img), n, (function(t,img) -> let i = Random.int(t) in
                                           let j = Random.int(t) in
                                           img.(i).(j) <- Noir;
-                                          (t,img)));
-img
+                                          (t,img))))
 ;;
 
 (* 
@@ -269,10 +268,10 @@ random_img(4,4);;
           N
           |
 
-    +-----+-----+
+    O-----O-----+
     | nw  | ne  |
     |     |     |
-W-  +-----+-----+  -E
+W-  O-----O-----+  -E
     | sw  | se  |
     |     |     |
     +-----+-----+
@@ -311,15 +310,13 @@ image_vers_arbre(4, img_test1);;
 (****************)
 
 let remplir_carre (img, i, j, k, c : picture * int * int * int * couleur) : picture  =
-  snd (forloop((0, img),
-               k-i+1,
-               (function (a,img) -> snd (forloop((j, ()),
-                                                k-j,
-                                                (function (b, ()) -> print_int a;
-                                                                     img.(a).(b) <- Noir;
-					                             print_string " ";
-					                             print_int b;
-					                             print_newline (); (b+1, ()))));
+  snd (forloop((i, img),
+               k,
+               (function (a,img) -> snd (forloop((j+1, ()),
+                                                k,
+                                                (function (b, ()) ->
+                                                                     img.(a).(b) <- c;
+					                            (b-1, ()))));
                                    (a+1, img)))
     )
 ;;
@@ -328,19 +325,20 @@ let remplir_carre (img, i, j, k, c : picture * int * int * int * couleur) : pict
 Exemples d'utilisation q
 de la fonction remplir_carre
 *)
-remplir_carre(random_img(4,0), 0,2,4, Noir);;
+remplir_carre(random_img(4,0),1,0,2, Noir);;
+
 
 let  arbre_vers_image(k,arb : int * arbre) : picture =
   let img = Array.make_matrix k k Blanc in
   let rec fill_image(i, j, k, arb : int * int * int * arbre) : picture =
     match arb with
-    |Feuille c -> remplir_carre(img, i, j, k, c)
+    |Feuille c  -> remplir_carre(img, i, j, k, c)
     |Noeud (nw, ne, sw, se) ->
       let kn = k/2 in
-      fill_image(i, (j+kn), kn, ne);
-      fill_image(i,j, kn, nw);
-      fill_image((i+kn), (j+kn), kn, se);
-      fill_image((i+kn), j, kn, sw)
+      fill_image(i, (j+kn), kn, nw);
+      fill_image(i,j, kn, sw);
+      fill_image((i+kn), (j+kn), kn, ne);
+      fill_image((i+kn), j, kn, se);
   in
   fill_image(0, 0, k, arb)
 ;;
@@ -350,20 +348,41 @@ Exemples d'utilisation
 de la fonction arbre_vers_image
 *)
 
-arbre_vers_image(4,image_vers_arbre(4, img_test1));; (* Ne marche pas ?*)
+arbre_vers_image(4, arb_img_test1);;
+
 
 (**************)
 (* Question 5 *)
 (**************)
-(*
-let draw_tree k arb =
-*)
+let rec do_draw i j k a = 
+  match a with
+  |Feuille Noir ->  Graphics.fill_rect i j k k
+  |Feuille Blanc -> ()
+  |Noeud (nw,ne,sw,se) ->
+    let kn = k/2 in
+    do_draw i (j+kn) kn nw ;
+    do_draw (i+kn) (j+kn) kn ne ;
+    do_draw i j kn sw ;
+    do_draw (i+kn) j kn se
+;;
+
+let draw_tree k a = 
+  do_draw 0 0 k a
+;;
+
+
 (* 
 Exemples d'utilisation 
 de la fonction draw_tree
+ *)
 
-*)
+open_graph "" ;;
+resize_window 256 256;;
+draw_tree 256 arb_img_test1 ;;
+close_graph()
+;;
 
+;;
 (****************)
 (* Question 6.1 *)
 (****************)
@@ -371,15 +390,27 @@ de la fonction draw_tree
 (*
 Exemples d'agrandissement d'images
 
-*)
+ *)
+let max_four a b c d = 
+	let max1 = max a b
+	and max2 = max c d
+	in max max1 max2;;
+ 
+(max_four 5 12 65 27);;
+ 
+let rec height = function arbre ->
+	match arbre with 
+	| Feuille _ -> 0
+	| Noeud(e,f,g,h) -> 1 + (max_four (height e)(height f)(height g)(height h));;
 
 (****************)
 (* Question 6.2 *)
 (****************)
-
-(*
-let rotation arb = 
-*)
+let rec rotation arb =
+  match arb with
+| Feuille _ -> arb
+| Noeud (c1,c2,c3,c4) ->
+   Noeud (rotation c3,rotation c1, rotation c4, rotation c2);;
 (* 
 Exemples d'utilisation 
 de la fonction rotation
@@ -389,9 +420,16 @@ de la fonction rotation
 (**************)
 (* Question 7 *)
 (**************)
-(*
-let fractale k n =
-*)
+let rec fractale n =
+  if n <= 0 then Feuille Noir
+  else
+     let c = fractale (n-1) in
+     let c1 = Noeud (c,c,c,Feuille Blanc) in
+     let c3 = rotation c1 in
+     let c4 = rotation c3 in
+     let c2 = rotation c4 in
+     Noeud (c1,c2,c3,c4)
+;;
 (* 
 Exemples d'utilisation 
 de la fonction fractale
@@ -401,13 +439,21 @@ de la fonction fractale
 (****************)
 (* Question 8.1 *)
 (****************)
-(*
-let arbre_vers_bits arb =
-*)
+let rec arbre_vers_bit a = match a with
+| Feuille Blanc -> [0 ; 0]
+| Feuille Noir  -> [0 ; 1 ]
+| Noeud (a1,a2,a3,a4) ->
+    1::arbre_vers_bit a1 @
+    arbre_vers_bit a2 @
+    arbre_vers_bit a3 @
+    arbre_vers_bit a4
+;;
+
 (* 
 Exemples d'utilisation 
 de la fonction arbre_vers_bits
-
+*)
+arbre_vers_bit(arb_img_test1);;
 *)
 
 (****************)
@@ -425,9 +471,18 @@ de la fonction bits_vers_octets
 (****************)
 (* Question 8.3 *)
 (****************)
-(*
-let bits_vers_arbres lb =
-*)
+
+let rec bit_vers_arbre l = match l with
+| Zero::Zero::chan -> Feuille Blanc, chan
+| Zero::Un::chan -> Feuille Noir, chan
+| Un::chan ->
+    let a1,chan = bit_vers_arbre  chan in
+    let a2,chan = bit_vers_arbre  chan in
+    let a3,chan = bit_vers_arbre chan in
+    let a4,chan = bit_vers_arbre chan in
+    Noeud (a1,a2,a3,a4),chan
+| _ -> assert false
+;;
 (* 
 Exemples d'utilisation 
 de la fonction bits_vers_arbres
