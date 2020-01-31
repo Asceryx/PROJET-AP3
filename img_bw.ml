@@ -298,8 +298,8 @@ let rec image_vers_arbre(k, img : int * picture) : arbre =
    merge(img, 0, 0, k)
 ;;
 
-(* 
-Exemples d'utilisation 
+(*
+Exemples d'utilisation
 de la fonction image_vers_arbre
 *)
 
@@ -354,21 +354,22 @@ arbre_vers_image(4, arb_img_test1);;
 (**************)
 (* Question 5 *)
 (**************)
-let rec do_draw i j k a = 
-  match a with
-  |Feuille Noir ->  Graphics.fill_rect i j k k
-  |Feuille Blanc -> ()
-  |Noeud (nw,ne,sw,se) ->
-    let kn = k/2 in
-    do_draw i (j+kn) kn nw ;
-    do_draw (i+kn) (j+kn) kn ne ;
-    do_draw i j kn sw ;
-    do_draw (i+kn) j kn se
+
+let rec draw_tree k a =
+  let rec do_draw i j k a = 
+    match a with
+    |Feuille Noir ->  Graphics.fill_rect i j k k
+    |Feuille Blanc -> ()
+    |Noeud (nw,ne,sw,se) ->
+      let kn = k/2 in
+      do_draw i (j+kn) kn nw ;
+      do_draw (i+kn) (j+kn) kn ne ;
+      do_draw i j kn sw ;
+      do_draw (i+kn) j kn se
+ in
+ do_draw 0 0 k a
 ;;
 
-let draw_tree k a = 
-  do_draw 0 0 k a
-;;
 
 
 (* 
@@ -389,19 +390,27 @@ close_graph()
 
 (*
 Exemples d'agrandissement d'images
-
  *)
-let max_four a b c d = 
-	let max1 = max a b
-	and max2 = max c d
-	in max max1 max2;;
- 
-(max_four 5 12 65 27);;
- 
-let rec height = function arbre ->
-	match arbre with 
-	| Feuille _ -> 0
-	| Noeud(e,f,g,h) -> 1 + (max_four (height e)(height f)(height g)(height h));;
+
+(*
+Sur la question 5, on peut voir un exemple d'agrandissement de l'image : On change tout simplement la valeur de k correspondant à l'agrandissement voulu
+*)
+
+(*Pour un image 2 fois plus grande, on multiplie la taille par 2 (soit k) *)
+
+let size = 256;;
+
+open_graph "" ;;
+resize_window size size;;
+draw_tree size arb_img_test1 ;;
+
+(*Image aggrandi 2 fois*)
+let dsize = 2*size;;
+resize_window dsize dsize;;
+draw_tree dsize arb_img_test1 ;;
+
+close_graph()
+;;
 
 (****************)
 (* Question 6.2 *)
@@ -411,7 +420,8 @@ let rec rotation arb =
 | Feuille _ -> arb
 | Noeud (c1,c2,c3,c4) ->
    Noeud (rotation c3,rotation c1, rotation c4, rotation c2);;
-(* 
+
+(*
 Exemples d'utilisation 
 de la fonction rotation
 
@@ -459,48 +469,92 @@ arbre_vers_bit(arb_img_test1);;
 (****************)
 (* Question 8.2 *)
 (****************)
-(*
-let bits_vers_octets lb =
-*)
+
+let rec sum(ilsb ,ln) =
+  match ln with
+  |[] -> 0
+  |a :: res -> a * int_of_float(2. ** float_of_int(ilsb)) + sum(ilsb + 1, res)
+;;
+
+
+let rec complete(ln) =
+  let size = List.length(ln) in
+  match size mod 8 with
+  |0 -> ln
+  |a -> complete (ln @ [0])
+;;
+
+let rec bits_vers_octets lb =
+  match complete lb with 
+  |a0::a1::a2::a3::a4::a5::a6::a7::suiv -> [sum(0, [a0;a1;a2;a3;a4;a5;a6;a7])] @ bits_vers_octets suiv
+  |_ -> []
+;;
+
+
+
 (* 
 Exemples d'utilisation 
 de la fonction bits_vers_octets
 
 *)
 
+bits_vers_octets [0;1;0;1;0;1;1;0;
+                  0;1;0;1;0;1;1;1;
+                  1;0;1;0;0;0];; (*Pas un multiple de 8*)
+
 (****************)
 (* Question 8.3 *)
 (****************)
 
-let rec bit_vers_arbre l = match l with
-| Zero::Zero::chan -> Feuille Blanc, chan
-| Zero::Un::chan -> Feuille Noir, chan
-| Un::chan ->
-    let a1,chan = bit_vers_arbre  chan in
-    let a2,chan = bit_vers_arbre  chan in
-    let a3,chan = bit_vers_arbre chan in
-    let a4,chan = bit_vers_arbre chan in
-    Noeud (a1,a2,a3,a4),chan
-| _ -> assert false
+let rec bit_vers_arbre lb =
+  match lb with
+| 0::0::suiv -> Feuille Blanc, suiv
+| 0::1::suiv -> Feuille Noir, suiv
+| 1::suiv ->
+    let a1,suiv = bit_vers_arbre suiv in
+    let a2,suiv = bit_vers_arbre suiv in
+    let a3,suiv = bit_vers_arbre suiv in
+    let a4,suiv = bit_vers_arbre suiv in
+    Noeud (a1,a2,a3,a4) , suiv
+
+|_-> failwith "Erreur dans la forme de la liste"
 ;;
 (* 
 Exemples d'utilisation 
 de la fonction bits_vers_arbres
-
 *)
+
+
+
+bit_vers_arbre [1;0;0;1;0;0;0;0;1];;
+
 (*
 Explications sur la gestion 
 des erreurs de la fonction bits_vers_arbres
 *)
 
-(*
-let octet_vers_bits lo =
-*)
+
+let rec octet_vers_bits lo= 
+  let rec binary value =
+    if value=0 then []
+    else value mod 2 :: binary(value / 2)
+  in
+  match lo with
+  |[] -> []
+  |a :: suiv -> complete(binary(a)) @ octet_vers_bits(suiv)
+;;
+
+
+
 (* 
 Exemples d'utilisation 
 de la fonction octet_vers_bits
 
 *)
+
+octet_vers_bits(bits_vers_octets [0;1;0;1;0;1;1;0;
+                  0;1;0;1;0;1;1;1;
+                  1;0;1;0;0;0]);;
 
 (****************)
 (* Question 8.4 *)
